@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧬 Molecular Explorer Pro 🧪</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Montserrat:wght@600;800&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos de fondo y tipografía */
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #0d1117; /* Fondo oscuro GitHub-like */
+            color: #c9d1d9;
+        }
+        h1, h2 {
+            font-weight: 800;
+        }
+        
+        /* Estilos personalizados para la barra de GC */
+        .gc-at-bar {
+            height: 20px;
+            border-radius: 8px;
+            display: flex;
+            overflow: hidden;
+            margin-top: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .gc-segment { background-color: #2e8b57; /* Verde Marino */ transition: width 0.5s ease-in-out; }
+        .at-segment { background-color: #b0c4de; /* Azul Claro */ transition: width 0.5s ease-in-out; }
+
+        /* Estilo de la salida de proteína (similar a tu imagen) */
+        .protein-output {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-all;
+            background-color: #010409;
+            color: #f0f6fc;
+            padding: 1rem;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #30363d;
+        }
+
+        /* Estilo del modal (para pop-ups de ayuda) */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        /* Utilidad para copiar */
+        .copy-btn-abs {
+            @apply absolute top-2 right-2 px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded-md text-xs font-semibold shadow-lg transition-colors duration-200;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <header class="bg-[#161b22] shadow-xl border-b border-[#30363d] p-6">
+        <div class="max-w-7xl mx-auto">
+            <h1 class="text-4xl text-[#58a6ff] mb-2">🧬 Molecular Explorer Pro</h1>
+            <p class="text-gray-400">Herramienta de Bioinformática para análisis de secuencias</p>
+            <nav class="mt-4">
+                <a href="#analisis" class="text-gray-200 hover:text-[#58a6ff] transition duration-200 mx-3 font-semibold">Análisis Principal</a>
+                <a href="#busqueda" class="text-gray-200 hover:text-[#58a6ff] transition duration-200 mx-3 font-semibold">Bases de Datos</a>
+                <a href="#acerca" class="text-gray-200 hover:text-[#58a6ff] transition duration-200 mx-3 font-semibold">Acerca de</a>
+                <a href="#contacto" class="text-gray-200 hover:text-[#58a6ff] transition duration-200 mx-3 font-semibold">Contacto</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-8 space-y-10">
+
+        <section id="analisis" class="bg-[#161b22] p-6 rounded-xl border border-[#30363d]">
+            <h2 class="text-2xl text-[#58a6ff] mb-4">Ingresar Secuencia de ADN (5' → 3')</h2>
+            <textarea 
+                id="dnaInput" 
+                rows="8" 
+                class="w-full p-4 bg-[#010409] text-lg text-white border border-[#30363d] rounded-lg focus:ring-2 focus:ring-[#58a6ff] focus:border-transparent font-mono resize-y" 
+                placeholder="Ejemplo: ATGGCTGCTTTTCTTCTTCTCTCTGTTGTTGCTGCT... (Solo A, T, G, C, N)"
+                oninput="updateAllAnalyses()"
+            ></textarea>
+        </section>
+
+        <section class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            
+            <div class="bg-[#161b22] p-5 rounded-xl border border-[#30363d] shadow-lg">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xl text-[#90e0ef] font-semibold">1. Reverso Complementario</h3>
+                    <button onclick="showModal('modalRev')" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition">❓ Ayuda</button>
+                </div>
+                <p class="text-sm text-gray-400 mb-3">Hebras 3'→5' (Invertido y Complementario).</p>
+                <div class="relative">
+                    <pre id="revOut" class="protein-output max-h-40">—</pre>
+                    <button onclick="copyToClipboard('revOut')" class="copy-btn-abs">Copiar</button>
+                </div>
+                <img src="https://i.imgur.com/KjMwnrA.png" alt="Diagrama Reverso Complementario" class="w-full mt-4 rounded-lg border border-[#30363d]">
+            </div>
+
+            <div class="bg-[#161b22] p-5 rounded-xl border border-[#30363d] shadow-lg">
+                <h3 class="text-xl text-[#90e0ef] font-semibold mb-3">2. Contenido G+C</h3>
+                <p class="text-sm text-gray-400 mb-3">Estabilidad del ADN y sesgo del genoma.</p>
+                <div id="gcOut" class="text-2xl font-bold mb-2 text-[#b0c4de]">GC%: 0.00%</div>
+                
+                <div class="gc-at-bar">
+                    <div id="gcBar" class="gc-segment" style="width: 0%;"></div>
+                    <div id="atBar" class="at-segment" style="width: 100%;"></div>
+                </div>
+                <div class="flex justify-between text-xs mt-1">
+                    <span id="gcLabel" class="text-[#2e8b57]">GC (0%)</span>
+                    <span id="atLabel" class="text-[#b0c4de]">AT (100%)</span>
+                </div>
+                
+                <img src="https://i.imgur.com/0T5ML2C.png" alt="Estructura G-C T-A" class="w-full mt-4 rounded-lg border border-[#30363d]">
+            </div>
+
+            <div class="bg-[#161b22] p-5 rounded-xl border border-[#30363d] shadow-lg lg:col-span-3">
+                <h3 class="text-xl text-[#90e0ef] font-semibold mb-3">3. Traducción de ADN a Proteína (3 Frames)</h3>
+                <div class="flex flex-wrap gap-4 mb-4">
+                    <label class="flex items-center text-sm">
+                        <input id="untilStopChk" type="checkbox" class="form-checkbox h-4 w-4 text-[#58a6ff] rounded" onchange="updateTranslations()">
+                        <span class="ml-2">Traducir hasta primer STOP (ORF)</span>
+                    </label>
+                    <div class="flex items-center text-sm">
+                        <label for="stopSymbolSelect" class="mr-2">Símbolo STOP:</label>
+                        <select id="stopSymbolSelect" class="p-1 bg-[#010409] border border-[#30363d] rounded text-sm" onchange="updateTranslations()">
+                            <option value="*">Mostrar '*'</option>
+                            <option value="[STOP]">Mostrar '[STOP]'</option>
+                            <option value="">Ocultar STOP</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid md:grid-cols-3 gap-5">
+                    <div>
+                        <div class="text-xs text-gray-400 mb-1">Frame 1 (Offset 0)</div>
+                        <div class="relative">
+                            <pre id="transOut1" class="protein-output">—</pre>
+                            <button onclick="copyToClipboard('transOut1')" class="copy-btn-abs">Copiar</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400 mb-1">Frame 2 (Offset 1)</div>
+                        <div class="relative">
+                            <pre id="transOut2" class="protein-output">—</pre>
+                            <button onclick="copyToClipboard('transOut2')" class="copy-btn-abs">Copiar</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400 mb-1">Frame 3 (Offset 2)</div>
+                        <div class="relative">
+                            <pre id="transOut3" class="protein-output">—</pre>
+                            <button onclick="copyToClipboard('transOut3')" class="copy-btn-abs">Copiar</button>
+                        </div>
+                    </div>
+                </div>
+                <img src="https://i.imgur.com/UKSK1Wx.png" alt="Traducción de Proteína" class="w-full mt-4 rounded-lg border border-[#30363d]">
+            </div>
+            
+        </section>
+
+        <section id="busqueda" class="bg-[#161b22] p-6 rounded-xl border border-[#30363d]">
+            <h2 class="text-2xl text-[#58a6ff] mb-4">📚 Búsqueda en Bases de Datos (NCBI)</h2>
+            <p class="text-gray-400 mb-4">Busca artículos o secuencias en PubMed y BLAST.</p>
+            <div class="flex flex-col md:flex-row gap-4">
+                <input 
+                    type="text" 
+                    id="searchTerm" 
+                    class="flex-grow p-3 bg-[#010409] text-white border border-[#30363d] rounded-lg focus:ring-2 focus:ring-[#58a6ff]" 
+                    placeholder="Ejemplo: Gen ZFP2 o cáncer de páncreas" 
+                />
+                <select id="ncbiDatabaseSelect" class="p-3 bg-[#010409] text-white border border-[#30363d] rounded-lg">
+                    <option value="pubmed">PubMed (Artículos Científicos)</option>
+                    <option value="blast">BLAST (Búsqueda de Secuencias)</option>
+                </select>
+                <button onclick="searchNCBI()" class="px-5 py-3 bg-[#0077b6] hover:bg-[#00b4d8] text-white font-semibold rounded-lg transition duration-200 flex items-center justify-center">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/NCBI_logo.svg/100px-NCBI_logo.svg.png" alt="NCBI Logo" class="h-4 w-auto mr-2"> 
+                    Buscar en NCBI
+                </button>
+            </div>
+            <p id="searchResults" class="mt-4 text-sm text-gray-400">La búsqueda abrirá una nueva pestaña.</p>
+        </section>
+
+        <section id="acerca" class="bg-[#161b22] p-6 rounded-xl border border-[#30363d]">
+            <h2 class="text-2xl text-[#58a6ff] mb-4">ℹ️ Acerca de Molecular Explorer Pro</h2>
+            <p class="text-gray-400 leading-relaxed">Esta herramienta fue diseñada como un proyecto educativo para simplificar tareas comunes de bioinformática molecular. Combina funciones esenciales como la manipulación de hebras de ADN, análisis de composición (GC%) y la traducción in silico a proteínas, todo con una interfaz moderna y accesible. Nuestro objetivo es que estudiantes y profesionales tengan un punto de partida rápido y confiable para el análisis de secuencias.</p>
+            <img src="https://i.imgur.com/k6lP0Wn.png" alt="Concepto Biología Molecular" class="w-1/3 mt-4 rounded-lg border border-[#30363d]">
+        </section>
+
+        <section id="contacto" class="bg-[#161b22] p-6 rounded-xl border border-[#30363d]">
+            <h2 class="text-2xl text-[#58a6ff] mb-4">✉️ Contacto</h2>
+            <p class="text-gray-400 mb-4">Si tienes sugerencias o reportas errores, contáctanos.</p>
+            <form class="space-y-4">
+                <input type="text" placeholder="Nombre" class="w-full p-3 bg-[#010409] text-white border border-[#30363d] rounded-lg focus:ring-2 focus:ring-[#58a6ff]" />
+                <input type="email" placeholder="Correo Electrónico" class="w-full p-3 bg-[#010409] text-white border border-[#30363d] rounded-lg focus:ring-2 focus:ring-[#58a6ff]" />
+                <textarea rows="4" placeholder="Mensaje" class="w-full p-3 bg-[#010409] text-white border border-[#30363d] rounded-lg focus:ring-2 focus:ring-[#58a6ff] resize-y"></textarea>
+                <button type="submit" class="px-5 py-2 bg-[#2e8b57] hover:bg-[#3cb371] text-white font-semibold rounded-lg transition duration-200">Enviar Mensaje</button>
+            </form>
+        </section>
+        
+    </main>
+
+    <div id="modalRev" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
+        <div class="bg-[#161b22] p-6 rounded-xl max-w-lg w-full shadow-2xl border border-[#30363d]">
+            <div class="flex justify-between items-center mb-4 border-b border-[#30363d] pb-2">
+                <h3 class="font-bold text-xl text-[#90e0ef]">Reverse Complement — Detalle</h3>
+                <button onclick="hideModal('modalRev')" class="text-red-500 hover:text-red-400 font-bold text-lg">✖</button>
+            </div>
+            <img src="https://i.imgur.com/KjMwnrA.png" alt="Diagrama Reverso Complementario" class="mt-4 rounded-lg border border-[#30363d] w-full" />
+            <p class="text-sm text-gray-400 mt-4">Proceso: 1. **Complementario:** Se intercambian bases (A↔T, G↔C). 2. **Reverso:** La secuencia se invierte para obtener la orientación 5'→3' de la hebra opuesta.</p>
+        </div>
+    </div>
+
+    <footer class="text-center text-gray-500 text-sm mt-10 p-4 border-t border-[#30363d] bg-[#161b22]">
+        <p>Desarrollado por Carlos Flores © 2025 | Proyecto de Bioinformática Molecular.</p>
+    </footer>
+
+    <script>
+        const dnaInput = document.getElementById('dnaInput');
+        const revOut = document.getElementById('revOut');
+        const gcOut = document.getElementById('gcOut');
+        const gcBar = document.getElementById('gcBar');
+        const atBar = document.getElementById('atBar');
+        const gcLabel = document.getElementById('gcLabel');
+        const atLabel = document.getElementById('atLabel');
+        const transOut1 = document.getElementById('transOut1');
+        const transOut2 = document.getElementById('transOut2');
+        const transOut3 = document.getElementById('transOut3');
+        const untilStopChk = document.getElementById('untilStopChk');
+        const stopSymbolSelect = document.getElementById('stopSymbolSelect');
+
+        // --- Utilidad: Limpiar secuencia (permite N) ---
+        const cleanSeq = s => s.toUpperCase().replace(/[^ATCGN]/g, '').replace(/U/g, 'T');
+
+        // --- Utilidad: Copiar al Portapapeles ---
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const textToCopy = element.textContent === '—' ? '' : element.textContent;
+
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    alert('¡Secuencia copiada al portapapeles!');
+                })
+                .catch(err => {
+                    console.error('Error al copiar: ', err);
+                });
+        }
+
+        // --- Modal ---
+        function showModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+            document.getElementById(id).classList.add('flex');
+        }
+        function hideModal(id) {
+            document.getElementById(id).classList.add('hidden');
+            document.getElementById(id).classList.remove('flex');
+        }
+
+        // --- 1. Reverse Complement ---
+        function reverseComplement() {
+            const seq = cleanSeq(dnaInput.value);
+            if (!seq) {
+                revOut.textContent = '—';
+                return;
+            }
+            // Mapea A<->T, G<->C. Mantiene 'N' como 'N'
+            const comp = seq.split('').map(b => ({A:'T',T:'A',G:'C',C:'G'})[b] || b).reverse().join('');
+            revOut.textContent = comp || '—';
+        }
+
+        // --- 2. GC Content (Dinamico) ---
+        function calcGC() {
+            const seq = cleanSeq(dnaInput.value);
+            if (!seq || seq.length === 0) {
+                gcOut.textContent = 'GC%: 0.00%';
+                gcBar.style.width = '0%';
+                atBar.style.width = '100%';
+                gcLabel.textContent = 'GC (0%)';
+                atLabel.textContent = 'AT (100%)';
+                return;
+            }
+            
+            // Solo contamos ATGC para el porcentaje (excluyendo N)
+            const validSeq = seq.replace(/N/g, '');
+            const gcCount = (validSeq.match(/[GC]/g) || []).length;
+            const atCount = (validSeq.match(/[AT]/g) || []).length;
+            const total = validSeq.length;
+
+            if (total === 0) {
+                gcOut.textContent = 'GC%: 0.00%';
+                gcBar.style.width = '0%';
+                atBar.style.width = '100%';
+                gcLabel.textContent = 'GC (0%)';
+                atLabel.textContent = 'AT (100%)';
+                return;
+            }
+            
+            const gcPercent = ((gcCount / total) * 100).toFixed(2);
+            const atPercent = ((atCount / total) * 100).toFixed(2);
+            
+            gcOut.textContent = `GC%: ${gcPercent}%`;
+            
+            // Actualizar el diagrama de barras
+            gcBar.style.width = `${gcPercent}%`;
+            atBar.style.width = `${atPercent}%`;
+            
+            // Actualizar etiquetas
+            gcLabel.textContent = `GC (${gcPercent}%)`;
+            atLabel.textContent = `AT (${atPercent}%)`;
+        }
+
+        // --- 3. Traducción de ADN a proteína ---
+        const codonTable = {
+            'TTT':'F','TTC':'F','TTA':'L','TTG':'L','CTT':'L','CTC':'L','CTA':'L','CTG':'L',
+            'ATT':'I','ATC':'I','ATA':'I','ATG':'M','GTT':'V','GTC':'V','GTA':'V','GTG':'V',
+            'TCT':'S','TCC':'S','TCA':'S','TCG':'S','CCT':'P','CCC':'P','CCA':'P','CCG':'P',
+            'ACT':'T','ACC':'T','ACA':'T','ACG':'T','GCT':'A','GCC':'A','GCA':'A','GCG':'A',
+            'TAT':'Y','TAC':'Y','TAA':'*','TAG':'*','CAT':'H','CAC':'H','CAA':'Q','CAG':'Q',
+            'AAT':'N','AAC':'N','AAA':'K','AAG':'K','GAT':'D','GAC':'D','GAA':'E','GAG':'E',
+            'TGT':'C','TGC':'C','TGA':'*','TGG':'W','CGT':'R','CGC':'R','CGA':'R','CGG':'R',
+            'AGT':'S','AGC':'S','AGA':'R','AGG':'R','GGT':'G','GGC':'G','GGA':'G','GGG':'G'
+        };
+
+        function translateFrame(seq, frame=0, options={untilStop:false, stopSymbol:'*'}) {
+            const s = cleanSeq(seq).slice(frame);
+            let aa = '';
+            if (s.length < 3) return '—';
+
+            for (let i=0; i+2 < s.length; i+=3) {
+                const cod = s.slice(i,i+3);
+                // Si el codón contiene 'N' o no está en la tabla, usa 'X' (aminoácido desconocido)
+                const mer = codonTable[cod] || 'X'; 
+                
+                if (mer === '*') {
+                    if (options.untilStop) return aa;
+                    aa += (options.stopSymbol === '' ? '' : options.stopSymbol);
+                } else {
+                    aa += mer;
+                }
+            }
+            return aa;
+        }
+
+        function updateTranslations() {
+            const seq = dnaInput.value;
+            if (!seq) {
+                transOut1.textContent = transOut2.textContent = transOut3.textContent = '—';
+                return;
+            }
+            const opts = { untilStop: untilStopChk.checked, stopSymbol: stopSymbolSelect.value };
+            
+            transOut1.textContent = translateFrame(seq, 0, opts);
+            transOut2.textContent = translateFrame(seq, 1, opts);
+            transOut3.textContent = translateFrame(seq, 2, opts);
+        }
+
+        // --- 4. Búsqueda en NCBI ---
+        function searchNCBI() {
+            const selectedDatabase = document.getElementById('ncbiDatabaseSelect').value;
+            let query = document.getElementById('searchTerm').value.trim();
+            let url = '';
+
+            if (!query) {
+                alert('Por favor, ingresa un término de búsqueda para NCBI.');
+                return;
+            }
+
+            if (selectedDatabase === 'pubmed') {
+                // Búsqueda de artículos
+                url = `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(query)}`;
+            } else if (selectedDatabase === 'blast') {
+                // Búsqueda de secuencias (redirección a la interfaz de búsqueda de nucleótidos)
+                url = `https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastSearch&PROG_RED=nucl&QUERY=${encodeURIComponent(query)}`;
+            }
+
+            if (url) {
+                window.open(url, '_blank');
+                document.getElementById("searchResults").innerHTML = `<p class="text-sm text-[#90e0ef] mt-2">Buscando "${query}" en ${selectedDatabase.toUpperCase()}...</p>`;
+            }
+        }
+        
+        // --- Sincronización automática de todos los análisis ---
+        function updateAllAnalyses() {
+            // Esto se llama en cada cambio del textarea
+            reverseComplement(); 
+            calcGC();     
+            updateTranslations();
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', updateAllAnalyses);
+    </script>
+</body>
+</html>
