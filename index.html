@@ -10,11 +10,20 @@
         /* Estilos de fondo y tipografía */
         body {
             font-family: 'Montserrat', sans-serif;
-            background-color: #0d1117; /* Fondo oscuro GitHub-like */
             color: #c9d1d9;
-        }
-        h1, h2 {
-            font-weight: 800;
+
+            /* ****************************************************** */
+            /* MODIFICACIÓN: IMAGEN DE FONDO PARA EL BODY             */
+            /* Reemplaza 'URL_DE_TU_IMAGEN_DE_FONDO' con tu imagen.   */
+            /* Ejemplo: url('assets/images/dna_background_full.jpg')  */
+            /* ****************************************************** */
+            background-image: url('https://assets.roche.com/f/173871/480x270/be54c7648e/que-es-el-adn.gif'); /* <-- CAMBIA ESTA URL */
+            background-size: cover; /* Cubre todo el área sin dejar espacios */
+            background-position: center center; /* Centra la imagen */
+            background-attachment: fixed; /* La imagen se queda fija al hacer scroll */
+            background-repeat: no-repeat; /* Evita que la imagen se repita */
+            /* Un color de fallback si la imagen no carga */
+            background-color: #0d1117;
         }
         
         /* Estilos personalizados para la barra de GC */
